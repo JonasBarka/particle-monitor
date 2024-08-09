@@ -11,11 +11,11 @@ public class Measurements(ILogger<Measurements> logger)
     [Function("measurements")]
     public IActionResult Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req,
-        [FromBody] MeasurementRequest measurementRequest)
+        [FromBody] MeasurementsRequest measurementRequest)
     {
         logger.LogInformation("Measurement recieved: {measurementRequest}", measurementRequest.ToString());
 
-        var measurementResponse = new MeasurementResponse(
+        var measurementResponse = new MeasurementsResponse(
             Guid.NewGuid(),
             DateTime.UtcNow,
             measurementRequest.DeviceId,
@@ -28,6 +28,6 @@ public class Measurements(ILogger<Measurements> logger)
     }
 }
 
-public record MeasurementRequest(int DeviceId, int Pm10, int Pm25, int Pm100);
+public record MeasurementsRequest(int DeviceId, int Pm10, int Pm25, int Pm100);
 
-public record MeasurementResponse(Guid Guid, DateTime DateTime, int DeviceId, int Pm10, int Pm25, int Pm100);
+public record MeasurementsResponse(Guid Guid, DateTime DateTime, int DeviceId, int Pm10, int Pm25, int Pm100);
