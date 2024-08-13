@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace ParticleMonitorFunctions;
+namespace ParticleMonitor.Functions;
 
 public class TestAvailability(ILogger<TestAvailability> logger)
 {
