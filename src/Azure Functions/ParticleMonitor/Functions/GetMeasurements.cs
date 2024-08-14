@@ -30,14 +30,14 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
         {
             var queryResult = tableClient.QueryAsync<Measurement>(filter: $"PartitionKey eq '{partitionKey}'");
             
-            var entities = new List<Measurement>();
+            var measurementsResponses = new List<MeasurementsResponse>();
             await foreach (var entity in queryResult)
             {
-                entities.Add(entity);
+                measurementsResponses.Add(MeasurementsResponse.CreateFromMeasurement(entity));
             }
 
             logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
-            return new OkObjectResult(entities);
+            return new OkObjectResult(measurementsResponses);
         }
         catch (Exception ex)
         {
