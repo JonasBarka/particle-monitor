@@ -396,3 +396,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+src/Azure Functions/ParticleMonitor/Properties/serviceDependencies.json
+src/Azure Functions/ParticleMonitor/Properties/serviceDependencies.ParticleMonitor2025 - Zip Deploy.json
+src/Azure Functions/ParticleMonitor/Properties/ServiceDependencies/ParticleMonitor2025 - Zip Deploy/appInsights1.arm.json
+src/Azure Functions/ParticleMonitor/Properties/ServiceDependencies/ParticleMonitor2025 - Zip Deploy/profile.arm.json
+src/Azure Functions/ParticleMonitor/Properties/ServiceDependencies/ParticleMonitor2025 - Zip Deploy/storage1.arm.json
