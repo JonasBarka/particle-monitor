@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 
 namespace ParticleMonitor.Entities;
 
-public class Measurement : ITableEntity
+public record Measurement : ITableEntity
 {
     // PartitionKey format deviceX_yyyy-MM-dd.
     public required string PartitionKey { get; set; }
