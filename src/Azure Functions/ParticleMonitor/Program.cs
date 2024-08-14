@@ -11,21 +11,21 @@ internal class Program
 {
     private static async Task Main(string[] _)
     {
-    var host = new HostBuilder()
-        .ConfigureFunctionsWebApplication()
-        .ConfigureServices(services =>
-        {
-            services.AddApplicationInsightsTelemetryWorkerService();
-            services.ConfigureFunctionsApplicationInsights();
-            services.AddSingleton(sp =>
+        var host = new HostBuilder()
+            .ConfigureFunctionsWebApplication()
+            .ConfigureServices(services =>
             {
-                string? connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
-                string tableName = "ParticleMonitor";
-                return new TableClient(connectionString, tableName);
-            });
-            services.AddSingleton(TimeProvider.System);
-        })
-        .Build();
+                services.AddApplicationInsightsTelemetryWorkerService();
+                services.ConfigureFunctionsApplicationInsights();
+                services.AddSingleton(sp =>
+                {
+                    string? connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+                    string tableName = "ParticleMonitor";
+                    return new TableClient(connectionString, tableName);
+                });
+                services.AddSingleton(TimeProvider.System);
+            })
+            .Build();
 
         await host.RunAsync();
     }
