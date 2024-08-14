@@ -2,22 +2,31 @@ using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
+using System.Diagnostics.CodeAnalysis;
 
-var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
-    .ConfigureServices(services =>
+namespace ParticleMonitor;
+
+[ExcludeFromCodeCoverage]
+internal class Program
+{
+    private static async Task Main(string[] _)
     {
-        services.AddApplicationInsightsTelemetryWorkerService();
-        services.ConfigureFunctionsApplicationInsights();
-        services.AddSingleton(sp =>
+    var host = new HostBuilder()
+        .ConfigureFunctionsWebApplication()
+        .ConfigureServices(services =>
         {
-            string? connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
-            string tableName = "ParticleMonitor";
-            return new TableClient(connectionString, tableName);
-        });
-        services.AddSingleton<TimeProvider>(TimeProvider.System);
-    })
-    .Build();
+            services.AddApplicationInsightsTelemetryWorkerService();
+            services.ConfigureFunctionsApplicationInsights();
+            services.AddSingleton(sp =>
+            {
+                string? connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+                string tableName = "ParticleMonitor";
+                return new TableClient(connectionString, tableName);
+            });
+            services.AddSingleton(TimeProvider.System);
+        })
+        .Build();
 
-await host.RunAsync();
+        await host.RunAsync();
+    }
+}
