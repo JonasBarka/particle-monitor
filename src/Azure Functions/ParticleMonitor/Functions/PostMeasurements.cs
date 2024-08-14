@@ -7,7 +7,7 @@ using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribut
 
 namespace ParticleMonitor.Functions;
 
-public class PostMeasurements(TableClient tableClient, ILogger<PostMeasurements> logger)
+public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider, ILogger<PostMeasurements> logger)
 {
     const string _method = "post";
     const string _route = "measurements";
@@ -21,7 +21,7 @@ public class PostMeasurements(TableClient tableClient, ILogger<PostMeasurements>
         
         try
         {
-            var measurement = measurementRequest.ToMeasurement();
+            var measurement = measurementRequest.ToMeasurement(timeProvider.GetUtcNow());
 
             await tableClient.AddEntityAsync(measurement);
 
