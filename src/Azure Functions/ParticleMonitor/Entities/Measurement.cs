@@ -5,16 +5,16 @@ namespace ParticleMonitor.Entities;
 
 public class Measurement : ITableEntity
 {
-    // PartitionKey format deviceX_yyyy-MM-dd
+    // PartitionKey format deviceX_yyyy-MM-dd.
     public required string PartitionKey { get; set; }
 
-    // RowKey format HH:mm:ss.fff
+    // RowKey format HH:mm:ss.fff.
     public required string RowKey { get; set; }
 
-    // Set by database
+    // Set by database.
     public DateTimeOffset? Timestamp { get; set; }
 
-    // Set by database
+    // Set by database.
     public ETag ETag { get; set; }
 
     public int DeviceId { get; set; }

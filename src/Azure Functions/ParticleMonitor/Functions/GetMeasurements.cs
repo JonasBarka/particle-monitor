@@ -11,6 +11,7 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
 {
     const string _method = "get"; 
     const string _route = "measurements";
+
     [Function(nameof(GetMeasurements))]
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequestData req,

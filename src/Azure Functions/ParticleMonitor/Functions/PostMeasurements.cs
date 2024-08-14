@@ -19,13 +19,22 @@ public class PostMeasurements(TableClient tableClient, ILogger<PostMeasurements>
         [FromBody] MeasurementsRequest measurementRequest)
     {
         logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, measurementRequest);
-        var measurement = measurementRequest.ToMeasurement();
+        
+        try
+        {
+            var measurement = measurementRequest.ToMeasurement();
 
-        await tableClient.AddEntityAsync(measurement);
+            await tableClient.AddEntityAsync(measurement);
 
-        var measurementResponse = MeasurementsResponse.CreateFromMeasurement(measurement);
+            var measurementResponse = MeasurementsResponse.CreateFromMeasurement(measurement);
 
-        return new OkObjectResult(measurementResponse);
+            return new OkObjectResult(measurementResponse);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error during {Method} request to {Route} endpoint, with body {Body}.", _method, _route, measurementRequest);
+            return new StatusCodeResult(500);
+        }
     }
 }
 
