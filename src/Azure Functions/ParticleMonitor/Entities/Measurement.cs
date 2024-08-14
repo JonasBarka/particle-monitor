@@ -1,8 +1,10 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ParticleMonitor.Entities;
 
+[ExcludeFromCodeCoverage]
 public record Measurement : ITableEntity
 {
     // PartitionKey format deviceX_yyyy-MM-dd.
