@@ -11,20 +11,31 @@ namespace ParticleMonitorTests.Functions;
 
 public class GetMeasurementsTests
 {
+    private readonly TableClient _tableClient;
+    private readonly ILogger<GetMeasurements> _logger;
+    private readonly GetMeasurements _getMeasurements;
+
+    public GetMeasurementsTests()
+    {
+        _tableClient = Substitute.For<TableClient>();
+        _logger = Substitute.For<ILogger<GetMeasurements>>();
+        _getMeasurements = new GetMeasurements(_tableClient, _logger);
+    }
+
     [Fact]
     public async Task Run_ReturnsBadRequest_WhenPartitionKeyIsNullOrEmpty()
     {
         // Arrange
-        var tableClient = Substitute.For<TableClient>();
-        var logger = Substitute.For<ILogger<GetMeasurements>>();
-        var getMeasurements = new GetMeasurements(tableClient, logger);
-
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await getMeasurements.Run(request, "");
+        var result = await _getMeasurements.Run(request, "");
 
         // Assert
+        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        _logger.AssertRecieved(2, LogLevel.Information);
+        _logger.AssertRecieved(2);
+
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("PartitionKey query parameter is required.", badRequestResult.Value);
     }
@@ -33,20 +44,18 @@ public class GetMeasurementsTests
     public async Task Run_ReturnsServerError_WhenQueryAsyncThrows()
     {
         // Arrange
-        var tableClient = Substitute.For<TableClient>();
-        tableClient
-            .QueryAsync<Measurement>(Arg.Any<string>())
-            .Throws<Exception>();
-
-        var logger = Substitute.For<ILogger<GetMeasurements>>();
-        var getMeasurements = new GetMeasurements(tableClient, logger);
-
+        _tableClient.QueryAsync<Measurement>(Arg.Any<string>()).Throws<Exception>();
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await getMeasurements.Run(request, "testPartitionKey");
+        var result = await _getMeasurements.Run(request, "testPartitionKey");
 
         // Assert
+        _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
+        _logger.AssertRecieved(1, LogLevel.Information);
+        _logger.AssertRecieved(1, LogLevel.Error);
+        _logger.AssertRecieved(2);
+
         var serverErrorResult = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
     }
@@ -55,28 +64,26 @@ public class GetMeasurementsTests
     public async Task Run_ReturnsExpectedMeasurements_WhenPartitionKeyIsValid()
     {
         // Arrange
-        var tableClient = Substitute.For<TableClient>();
-        var logger = Substitute.For<ILogger<GetMeasurements>>();
-
         var measurements = new List<Measurement>
         {
             new() { PartitionKey = "testPartitionKey1", RowKey = "1", DeviceId = 1, Pm10 = 2, Pm25 = 3, Pm100 = 4 },
             new() { PartitionKey = "testPartitionKey2", RowKey = "2", DeviceId = 5, Pm10 = 6, Pm25 = 7, Pm100 = 8 }
         };
 
-        var mockAsyncPageable = new MockAsyncPageable<Measurement>(measurements);
-        tableClient
+        _tableClient
             .QueryAsync<Measurement>(Arg.Any<string>())
-            .Returns(mockAsyncPageable);
-
-        var getMeasurements = new GetMeasurements(tableClient, logger);
+            .Returns(new MockAsyncPageable<Measurement>(measurements));
 
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await getMeasurements.Run(request, "testPartitionKey");
+        var result = await _getMeasurements.Run(request, "testPartitionKey");
 
         // Assert
+        _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
+        _logger.AssertRecieved(2, LogLevel.Information);
+        _logger.AssertRecieved(2);
+
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<List<MeasurementsResponse>>(okResult.Value);
         Assert.Equal(2, response.Count);
@@ -85,6 +92,7 @@ public class GetMeasurementsTests
     }
 }
 
+// Manual mock needed to fulfill notnull constraint on T, which otherwise causes a warning.
 public class MockAsyncPageable<T>(IEnumerable<T> items) : AsyncPageable<T> where T : notnull
 {
     public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)

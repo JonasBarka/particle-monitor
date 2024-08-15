@@ -10,25 +10,34 @@ namespace ParticleMonitorTests.Functions;
 
 public class PostMeasurementsTests
 {
+    private readonly TableClient _tableClient;
+    private readonly FakeTimeProvider _timeProvider;
+    private readonly ILogger<PostMeasurements> _logger;
+    private readonly PostMeasurements _postMeasurements;
+
+    public PostMeasurementsTests()
+    {
+        _tableClient = Substitute.For<TableClient>();
+        _timeProvider = new FakeTimeProvider();
+        _logger = Substitute.For<ILogger<PostMeasurements>>();
+        _postMeasurements = new PostMeasurements(_tableClient, _timeProvider, _logger);
+    }
+
     [Fact]
     public async Task Run_ReturnsOk_WhenMeasurementIsSuccessfullyInserted()
     {
         // Arrange
-        var tableClient = Substitute.For<TableClient>();
-        
-        var timeProvider = new FakeTimeProvider();
-
-        var logger = Substitute.For<ILogger<PostMeasurements>>();
-        
-        var postMeasurements = new PostMeasurements(tableClient, timeProvider, logger);
-
         var httpRequest = Substitute.For<HttpRequest>();
         var measurementRequest = new MeasurementsRequest(1, 2, 3, 4);
 
         // Act
-        var result = await postMeasurements.Run(httpRequest, measurementRequest);
+        var result = await _postMeasurements.Run(httpRequest, measurementRequest);
 
         // Assert
+        await _tableClient.Received(1).AddEntityAsync(Arg.Any<Measurement>());
+        _logger.AssertRecieved(1, LogLevel.Information);
+        _logger.AssertRecieved(1);
+
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<MeasurementsResponse>(okResult.Value);
         Assert.Equal(measurementRequest.DeviceId, response.DeviceId);
@@ -41,20 +50,19 @@ public class PostMeasurementsTests
     public async Task Run_ReturnsServerError_WhenAddEntityAsyncThrows()
     {
         // Arrange
-        var tableClient = Substitute.For<TableClient>();
-        tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync<Exception>();
-
-        var timeProvider = new FakeTimeProvider();
-        var logger = Substitute.For<ILogger<PostMeasurements>>();
-        var postMeasurements = new PostMeasurements(tableClient, timeProvider, logger);
-
-        var request = Substitute.For<HttpRequest>();
+        _tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync<Exception>();
+        var httpRequest = Substitute.For<HttpRequest>();
         var measurementRequest = new MeasurementsRequest(1, 2, 3, 4);
 
         // Act
-        var result = await postMeasurements.Run(request, measurementRequest);
+        var result = await _postMeasurements.Run(httpRequest, measurementRequest);
 
         // Assert
+        await _tableClient.Received(1).AddEntityAsync(Arg.Any<Measurement>());
+        _logger.AssertRecieved(1, LogLevel.Information);
+        _logger.AssertRecieved(1, LogLevel.Error);
+        _logger.AssertRecieved(2);
+
         var serverErrorResult = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
     }

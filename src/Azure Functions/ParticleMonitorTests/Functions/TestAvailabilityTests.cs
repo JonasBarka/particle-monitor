@@ -13,13 +13,15 @@ public class TestAvailabilityTests
         // Arrange
         var logger = Substitute.For<ILogger<TestAvailability>>();
         var testAvailability = new TestAvailability(logger);
-
         var request = Substitute.For<HttpRequest>();
 
         // Act
         var result = testAvailability.Run(request);
 
         // Assert
+        logger.AssertRecieved(1, LogLevel.Information);
+        logger.AssertRecieved(1);
+
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.Equal("Particle Monitor server is available.", okResult.Value);
     }
