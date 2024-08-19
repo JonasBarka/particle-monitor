@@ -7,10 +7,10 @@ namespace ParticleMonitor.Entities;
 [ExcludeFromCodeCoverage]
 public record Measurement : ITableEntity
 {
-    // PartitionKey format deviceX_yyyy-MM-dd.
+    // PartitionKey format "device{DeviceId}_{Date}".
     public required string PartitionKey { get; set; }
 
-    // RowKey format HH:mm:ss.fff.
+    // RowKey equals time UTC with format HH:mm:ss.
     public required string RowKey { get; set; }
 
     // Set by database.
@@ -18,6 +18,9 @@ public record Measurement : ITableEntity
 
     // Set by database.
     public ETag ETag { get; set; }
+
+    // Date format HH:mm:ss.
+    public required string Date { get; set; }
 
     public int DeviceId { get; set; }
 
