@@ -62,7 +62,7 @@ public class GetMeasurementsTests
     public async Task Run_ReturnsServerError_WhenQueryAsyncThrows()
     {
         // Arrange
-        _tableClient.QueryAsync<Measurement>(Arg.Any<string>()).Throws<Exception>();
+        _tableClient.QueryAsync<Measurement>(Arg.Any<string>()).Throws(new RequestFailedException("Error"));
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
@@ -74,8 +74,9 @@ public class GetMeasurementsTests
         _logger.AssertRecieved(1, LogLevel.Error);
         _logger.AssertRecieved(2);
 
-        var serverErrorResult = Assert.IsType<StatusCodeResult>(result);
+        var serverErrorResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
+        Assert.Equal("An error ocurred while trying to store retrive the measurements.", serverErrorResult.Value);
     }
 
     [Fact]

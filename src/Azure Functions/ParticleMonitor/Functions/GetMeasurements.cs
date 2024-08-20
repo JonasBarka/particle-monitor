@@ -1,9 +1,12 @@
+using Azure;
 using Azure.Data.Tables;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using ParticleMonitor.Entities;
+using System.Diagnostics.Metrics;
 
 namespace ParticleMonitor.Functions;
 
@@ -47,23 +50,25 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
 
         var partitionKey = deviceId + "_" + dateUTC;
 
+        var measurementsResponses = new List<MeasurementsResponse>();
         try
         {
             var queryResult = tableClient.QueryAsync<Measurement>(filter: $"PartitionKey eq '{partitionKey}'");
-            
-            var measurementsResponses = new List<MeasurementsResponse>();
+           
             await foreach (var entity in queryResult)
             {
                 measurementsResponses.Add(MeasurementsResponse.CreateFromMeasurement(entity));
             }
-
-            logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
-            return new OkObjectResult(measurementsResponses);
         }
-        catch (Exception ex)
+        catch (RequestFailedException ex)
         {
-            logger.LogError(ex, "Error occurred while querying entities for partition key {PartitionKey}.", partitionKey);
-            return new StatusCodeResult(500);
+            logger.LogError(ex, "Measurements for partition key {partitionKey} could not be retrieved.", partitionKey);
+            return new ObjectResult("An error ocurred while trying to store retrive the measurements.")
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
         }
+        logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
+        return new OkObjectResult(measurementsResponses);
     }
 }
