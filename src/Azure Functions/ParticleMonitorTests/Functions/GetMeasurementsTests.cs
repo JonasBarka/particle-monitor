@@ -23,13 +23,13 @@ public class GetMeasurementsTests
     }
 
     [Fact]
-    public async Task Run_ReturnsBadRequest_WhenPartitionKeyIsNullOrEmpty()
+    public async Task Run_ReturnsBadRequest_WhenDeviceIdIsEmpty()
     {
         // Arrange
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "");
+        var result = await _getMeasurements.Run(request, "", "2000-01-01");
 
         // Assert
         _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
@@ -37,7 +37,25 @@ public class GetMeasurementsTests
         _logger.AssertRecieved(2);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal("PartitionKey query parameter is required.", badRequestResult.Value);
+        Assert.Equal("DeviceId query parameter is required.", badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task Run_ReturnsBadRequest_WhenDateUtcIsEmpty()
+    {
+        // Arrange
+        var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
+
+        // Act
+        var result = await _getMeasurements.Run(request, "1", "");
+
+        // Assert
+        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        _logger.AssertRecieved(2, LogLevel.Information);
+        _logger.AssertRecieved(2);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("DateUTC query parameter is required.", badRequestResult.Value);
     }
 
     [Fact]
@@ -48,7 +66,7 @@ public class GetMeasurementsTests
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "testPartitionKey");
+        var result = await _getMeasurements.Run(request, "1", "2000-01-01");
 
         // Assert
         _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
@@ -64,10 +82,13 @@ public class GetMeasurementsTests
     public async Task Run_ReturnsExpectedMeasurements_WhenPartitionKeyIsValid()
     {
         // Arrange
+
+        var DateTime1 = new DateTimeOffset(2001, 1, 1, 1, 1, 1, TimeSpan.Zero);
+        var DateTime2 = new DateTimeOffset(2001, 1, 1, 2, 2, 2, TimeSpan.Zero);
         var measurements = new List<Measurement>
         {
-            new() { PartitionKey = "testPartitionKey1", RowKey = "1", DeviceId = 1, Pm10 = 2, Pm25 = 3, Pm100 = 4 },
-            new() { PartitionKey = "testPartitionKey2", RowKey = "2", DeviceId = 5, Pm10 = 6, Pm25 = 7, Pm100 = 8 }
+            new() { PartitionKey = "1_2001-01-01", RowKey = "2c58023b-e8ce-4dd9-b61f-cefa6fbec95d", DeviceId = 1, DateTime = DateTime1, Pm10 = 2, Pm25 = 3, Pm100 = 4 },
+            new() { PartitionKey = "1_2001-01-01", RowKey = "85d5568a-580f-40a3-af29-577a2105812b", DeviceId = 1, DateTime = DateTime2, Pm10 = 6, Pm25 = 7, Pm100 = 8 }
         };
 
         _tableClient
@@ -77,7 +98,7 @@ public class GetMeasurementsTests
         var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "testPartitionKey");
+        var result = await _getMeasurements.Run(request, "1", "2000-01-01");
 
         // Assert
         _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
@@ -87,8 +108,8 @@ public class GetMeasurementsTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<List<MeasurementsResponse>>(okResult.Value);
         Assert.Equal(2, response.Count);
-        Assert.Equal(new("testPartitionKey1", "1", 1, 2, 3, 4), response[0]);
-        Assert.Equal(new("testPartitionKey2", "2", 5, 6, 7, 8), response[1]);
+        Assert.Equal(new(1, DateTime1, 2, 3, 4), response[0]);
+        Assert.Equal(new(1, DateTime2, 6, 7, 8), response[1]);
     }
 }
 

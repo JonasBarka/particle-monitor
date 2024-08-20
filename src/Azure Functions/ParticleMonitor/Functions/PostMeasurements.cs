@@ -1,4 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using Azure;
+using Azure.Data.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -18,21 +19,31 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
         [FromBody] MeasurementsRequest measurementRequest)
     {
         logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, measurementRequest);
-        
+
+        var measurement = measurementRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
+
         try
         {
-            var measurement = measurementRequest.ToMeasurement(timeProvider.GetUtcNow());
-
-            await tableClient.AddEntityAsync(measurement);
-
-            var measurementResponse = MeasurementsResponse.CreateFromMeasurement(measurement);
-
-            return new OkObjectResult(measurementResponse);
+            await tableClient.AddEntityAsync(measurement);   
         }
-        catch (Exception ex)
+        catch (RequestFailedException ex)
         {
-            logger.LogError(ex, "Error during {Method} request to {Route} endpoint, with body {Body}.", _method, _route, measurementRequest);
-            return new StatusCodeResult(500);
+            logger.LogError(ex, "Measurement {Measurement} could not be stored.", measurement);
+            return new ObjectResult("An error ocurred while trying to store the measurement.")
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
         }
+
+        var measurementResponse = MeasurementsResponse.CreateFromMeasurement(measurement);
+
+        return new OkObjectResult(measurementResponse);
+    }
+
+    private DateTimeOffset DateWithoutMilliseconds()
+    {
+        DateTimeOffset dateTime = timeProvider.GetUtcNow();
+
+        return new DateTimeOffset(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second, dateTime.Offset);
     }
 }

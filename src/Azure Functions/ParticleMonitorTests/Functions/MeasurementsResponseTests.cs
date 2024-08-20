@@ -8,12 +8,15 @@ public class MeasurementsResponseTests
     [Fact]
     public void CreateFromMeasurement_CorrectlyConvertsToMeasurementsResponse()
     {
+        var dateTimeOffset = new DateTimeOffset(2000, 1, 1, 14, 30, 0, 123, TimeSpan.Zero);
+
         // Arrange
         var measurement = new Measurement
         {
-            PartitionKey = "device1_2023-10-05",
-            RowKey = "14:30:00.123",
+            PartitionKey = "1_2000-01-01",
+            RowKey = "a99373c3-21d6-44f2-a93c-2cda1f68d790",
             DeviceId = 1,
+            DateTime = dateTimeOffset,
             Pm10 = 10,
             Pm25 = 25,
             Pm100 = 100
@@ -23,8 +26,7 @@ public class MeasurementsResponseTests
         var response = MeasurementsResponse.CreateFromMeasurement(measurement);
 
         // Assert
-        Assert.Equal("device1_2023-10-05", response.PartitionKey);
-        Assert.Equal("14:30:00.123", response.RowKey);
+        Assert.Equal(dateTimeOffset, response.DateTime);
         Assert.Equal(1, response.DeviceId);
         Assert.Equal(10, response.Pm10);
         Assert.Equal(25, response.Pm25);

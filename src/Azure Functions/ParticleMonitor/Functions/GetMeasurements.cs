@@ -45,7 +45,7 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
             return new BadRequestObjectResult($"DateUTC query parameter must be a date in the format {Constants.DateFormat}.");
         }
 
-        var partitionKey = $"device{deviceId}_{dateUTC}";
+        var partitionKey = deviceId + "_" + dateUTC;
 
         try
         {

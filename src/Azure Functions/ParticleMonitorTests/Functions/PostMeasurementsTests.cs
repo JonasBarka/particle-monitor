@@ -1,4 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using Azure;
+using Azure.Data.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -50,7 +51,7 @@ public class PostMeasurementsTests
     public async Task Run_ReturnsServerError_WhenAddEntityAsyncThrows()
     {
         // Arrange
-        _tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync<Exception>();
+        _tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync(new RequestFailedException("Error"));
         var httpRequest = Substitute.For<HttpRequest>();
         var measurementRequest = new MeasurementsRequest(1, 2, 3, 4);
 
@@ -63,7 +64,7 @@ public class PostMeasurementsTests
         _logger.AssertRecieved(1, LogLevel.Error);
         _logger.AssertRecieved(2);
 
-        var serverErrorResult = Assert.IsType<StatusCodeResult>(result);
+        var serverErrorResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
     }
 }
