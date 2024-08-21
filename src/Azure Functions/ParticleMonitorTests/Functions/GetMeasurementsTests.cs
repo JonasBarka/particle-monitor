@@ -109,7 +109,7 @@ public class GetMeasurementsTests
 
         var serverErrorResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
-        Assert.Equal("An error ocurred while trying to store retrive the measurements.", serverErrorResult.Value);
+        Assert.Equal("An error occurred while trying to store retrive the measurements.", serverErrorResult.Value);
     }
 
     [Fact]

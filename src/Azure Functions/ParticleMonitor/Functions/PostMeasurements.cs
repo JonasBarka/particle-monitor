@@ -3,7 +3,9 @@ using Azure.Data.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Text.Json;
 
 namespace ParticleMonitor.Functions;
@@ -14,6 +16,14 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
     const string _route = "measurements";
 
     [Function(nameof(PostMeasurements))]
+    [OpenApiOperation(operationId: "PostMeasurements", tags: ["measurements"], Summary = "Stores a measurement.",
+        Description = "Stores a measurement recently collected by a Particle Monitor device.")]
+    [OpenApiRequestBody("application/json", typeof(MeasurementsRequest),
+        Description = "JSON request body containing the id for the device, followed by detected PM (Particulate Matter) values for PM1.0, PM2.5 and PM10.0.", Required = true)]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(MeasurementsResponse),
+        Description = "OK response message containing a JSON result with the supplied request and corresponding date and time in UTC.")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, "application/json", bodyType: typeof(string),
+        Description = "Bad request response message with a description of the problem with the request body.")]
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequest req)
     {
@@ -46,7 +56,7 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
         catch (RequestFailedException ex)
         {
             logger.LogError(ex, "Measurement {Measurement} could not be stored.", measurement);
-            return new ObjectResult("An error ocurred while trying to store the measurement.")
+            return new ObjectResult("An error occurred while trying to store the measurement.")
             {
                 StatusCode = StatusCodes.Status500InternalServerError
             };

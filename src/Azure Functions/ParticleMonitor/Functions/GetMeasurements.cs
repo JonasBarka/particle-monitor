@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using ParticleMonitor.Entities;
-using System.Diagnostics.Metrics;
+using System.Net;
 
 namespace ParticleMonitor.Functions;
 
@@ -16,6 +18,13 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
     const string _route = "measurements";
 
     [Function(nameof(GetMeasurements))]
+    [OpenApiOperation(operationId: "GetMeasurements", tags: ["measurements"], Summary = "Get measurements", Description = "Retrieves measurements for a given device and date.")]
+    [OpenApiParameter(name: "deviceId", In = ParameterLocation.Query, Required = true, Type = typeof(int), Description = "Device ID for the monitor, for which to retrive measurements.")]
+    [OpenApiParameter(name: "dateUTC", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "UTC date in format yyyy-MM-dd, for which to retrive measurements.")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<MeasurementsResponse>),
+        Description = "OK response message containing a JSON result with a collection of measurements for the specified device and date.")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, "application/json", bodyType: typeof(string),
+        Description = "Bad request response message with a descriptions of the problem with the request.")]
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequestData req,
         string deviceId,
@@ -63,7 +72,7 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
         catch (RequestFailedException ex)
         {
             logger.LogError(ex, "Measurements for partition key {partitionKey} could not be retrieved.", partitionKey);
-            return new ObjectResult("An error ocurred while trying to store retrive the measurements.")
+            return new ObjectResult("An error occurred while trying to store retrive the measurements.")
             {
                 StatusCode = StatusCodes.Status500InternalServerError
             };

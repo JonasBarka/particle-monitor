@@ -107,6 +107,6 @@ public class PostMeasurementsTests
 
         var serverErrorResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, serverErrorResult.StatusCode);
-        Assert.Equal("An error ocurred while trying to store the measurement.", serverErrorResult.Value);
+        Assert.Equal("An error occurred while trying to store the measurement.", serverErrorResult.Value);
     }
 }
