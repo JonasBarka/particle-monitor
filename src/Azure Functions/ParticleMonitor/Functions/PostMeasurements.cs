@@ -16,7 +16,7 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
     const string _route = "measurements";
 
     [Function(nameof(PostMeasurements))]
-    [OpenApiOperation(operationId: "PostMeasurements", tags: ["measurements"], Summary = "Stores a measurement.",
+    [OpenApiOperation(operationId: "PostMeasurements", tags: ["Measurements"], Summary = "Stores a measurement.",
         Description = "Stores a measurement recently collected by a Particle Monitor device.")]
     [OpenApiRequestBody("application/json", typeof(MeasurementsRequest),
         Description = "JSON request body containing the id for the device, followed by detected PM (Particulate Matter) values for PM1.0, PM2.5 and PM10.0.", Required = true)]

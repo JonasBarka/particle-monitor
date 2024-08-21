@@ -18,7 +18,7 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
     const string _route = "measurements";
 
     [Function(nameof(GetMeasurements))]
-    [OpenApiOperation(operationId: "GetMeasurements", tags: ["measurements"], Summary = "Get measurements", Description = "Retrieves measurements for a given device and date.")]
+    [OpenApiOperation(operationId: "GetMeasurements", tags: ["Measurements"], Summary = "Get measurements", Description = "Retrieves measurements for a given device and date.")]
     [OpenApiParameter(name: "deviceId", In = ParameterLocation.Query, Required = true, Type = typeof(int), Description = "Device ID for the monitor, for which to retrive measurements.")]
     [OpenApiParameter(name: "dateUTC", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "UTC date in format yyyy-MM-dd, for which to retrive measurements.")]
     [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<MeasurementsResponse>),
