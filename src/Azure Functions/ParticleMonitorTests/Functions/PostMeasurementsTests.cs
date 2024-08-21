@@ -1,4 +1,5 @@
 ﻿using Azure;
+using Azure.Core;
 using Azure.Data.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using ParticleMonitor.Entities;
 using ParticleMonitor.Functions;
+using System.Text;
+using System.Text.Json;
 
 namespace ParticleMonitorTests.Functions;
 
@@ -21,18 +24,47 @@ public class PostMeasurementsTests
         _tableClient = Substitute.For<TableClient>();
         _timeProvider = new FakeTimeProvider();
         _logger = Substitute.For<ILogger<PostMeasurements>>();
-        _postMeasurements = new PostMeasurements(_tableClient, _timeProvider, _logger);
+        _postMeasurements = new PostMeasurements(_tableClient, _timeProvider,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true },_logger);
+    }
+
+    [Fact]
+    public async Task Run_ReturnsBadRequest_WhenRequestBodyIsInvalid()
+    {
+        // Arrange
+        var invalidJson = "Invalid JSON";
+        var request = Substitute.For<HttpRequest>();
+        request.Body.Returns(new MemoryStream(Encoding.UTF8.GetBytes(invalidJson)));
+
+        // Act
+        var result = await _postMeasurements.Run(request);
+
+        // Assert
+        await _tableClient.DidNotReceiveWithAnyArgs().AddEntityAsync(Arg.Any<Measurement>());
+        _logger.AssertRecieved(1, LogLevel.Warning);
+        _logger.AssertRecieved(1);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Invalid request body.", badRequestResult.Value);
     }
 
     [Fact]
     public async Task Run_ReturnsOk_WhenMeasurementIsSuccessfullyInserted()
     {
         // Arrange
-        var httpRequest = Substitute.For<HttpRequest>();
-        var measurementRequest = new MeasurementsRequest(1, 2, 3, 4);
+        var validJson = """
+        {
+            "deviceId" : 1,
+            "pm10" : 2,
+            "pm25" : 3,
+            "pm100" : 4
+        }
+        """;
+        var request = Substitute.For<HttpRequest>();
+        request.Body.Returns(new MemoryStream(Encoding.UTF8.GetBytes(validJson)));
 
         // Act
-        var result = await _postMeasurements.Run(httpRequest, measurementRequest);
+        var result = await _postMeasurements.Run(request);
 
         // Assert
         await _tableClient.Received(1).AddEntityAsync(Arg.Any<Measurement>());
@@ -41,22 +73,31 @@ public class PostMeasurementsTests
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<MeasurementsResponse>(okResult.Value);
-        Assert.Equal(measurementRequest.DeviceId, response.DeviceId);
-        Assert.Equal(measurementRequest.Pm10, response.Pm10);
-        Assert.Equal(measurementRequest.Pm25, response.Pm25);
-        Assert.Equal(measurementRequest.Pm100, response.Pm100);
+        Assert.Equal(1, response.DeviceId);
+        Assert.Equal(2, response.Pm10);
+        Assert.Equal(3, response.Pm25);
+        Assert.Equal(4, response.Pm100);
     }
 
     [Fact]
     public async Task Run_ReturnsServerError_WhenAddEntityAsyncThrows()
     {
         // Arrange
+        var validJson = """
+        {
+            "deviceId" : 1,
+            "pm10" : 2,
+            "pm25" : 3,
+            "pm100" : 4
+        }
+        """;
+        var request = Substitute.For<HttpRequest>();
+        request.Body.Returns(new MemoryStream(Encoding.UTF8.GetBytes(validJson)));
+
         _tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync(new RequestFailedException("Error"));
-        var httpRequest = Substitute.For<HttpRequest>();
-        var measurementRequest = new MeasurementsRequest(1, 2, 3, 4);
 
         // Act
-        var result = await _postMeasurements.Run(httpRequest, measurementRequest);
+        var result = await _postMeasurements.Run(request);
 
         // Assert
         await _tableClient.Received(1).AddEntityAsync(Arg.Any<Measurement>());

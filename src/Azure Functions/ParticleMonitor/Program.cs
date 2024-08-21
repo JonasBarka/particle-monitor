@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace ParticleMonitor;
 
@@ -24,9 +25,16 @@ internal class Program
                     return new TableClient(connectionString, tableName);
                 });
                 services.AddSingleton(TimeProvider.System);
+
+                // Other ways to globally set serialization options have failed.
+                services.AddSingleton(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
             })
             .Build();
 
         await host.RunAsync();
     }
 }
+
