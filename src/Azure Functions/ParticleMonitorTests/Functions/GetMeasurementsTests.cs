@@ -14,22 +14,23 @@ public class GetMeasurementsTests
     private readonly TableClient _tableClient;
     private readonly ILogger<GetMeasurements> _logger;
     private readonly GetMeasurements _getMeasurements;
+    private readonly HttpRequestData _request;
 
     public GetMeasurementsTests()
     {
         _tableClient = Substitute.For<TableClient>();
         _logger = Substitute.For<ILogger<GetMeasurements>>();
         _getMeasurements = new GetMeasurements(_tableClient, _logger);
+        _request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
     }
 
     [Fact]
     public async Task Run_ReturnsBadRequest_WhenDeviceIdIsEmpty()
     {
         // Arrange
-        var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "", "2000-01-01");
+        var result = await _getMeasurements.Run(_request, "", "2000-01-01");
 
         // Assert
         _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
@@ -41,13 +42,29 @@ public class GetMeasurementsTests
     }
 
     [Fact]
+    public async Task Run_ReturnsBadRequest_WhenDeviceIdIsNotInteger()
+    {
+        // Arrange
+
+        // Act
+        var result = await _getMeasurements.Run(_request, "one", "2000-01-01");
+
+        // Assert
+        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        _logger.AssertRecieved(2, LogLevel.Information);
+        _logger.AssertRecieved(2);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("DeviceId query parameter must be an integer.", badRequestResult.Value);
+    }
+
+    [Fact]
     public async Task Run_ReturnsBadRequest_WhenDateUtcIsEmpty()
     {
         // Arrange
-        var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "1", "");
+        var result = await _getMeasurements.Run(_request, "1", "");
 
         // Assert
         _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
@@ -59,14 +76,30 @@ public class GetMeasurementsTests
     }
 
     [Fact]
+    public async Task Run_ReturnsBadRequest_WhenDateUtcIsNotWellFormedDate()
+    {
+        // Arrange
+
+        // Act
+        var result = await _getMeasurements.Run(_request, "1", "00-01-01");
+
+        // Assert
+        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        _logger.AssertRecieved(2, LogLevel.Information);
+        _logger.AssertRecieved(2);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("DateUTC query parameter must be a date in the format yyyy-MM-dd.", badRequestResult.Value);
+    }
+
+    [Fact]
     public async Task Run_ReturnsServerError_WhenQueryAsyncThrows()
     {
         // Arrange
         _tableClient.QueryAsync<Measurement>(Arg.Any<string>()).Throws(new RequestFailedException("Error"));
-        var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
 
         // Act
-        var result = await _getMeasurements.Run(request, "1", "2000-01-01");
+        var result = await _getMeasurements.Run(_request, "1", "2000-01-01");
 
         // Assert
         _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
@@ -96,10 +129,8 @@ public class GetMeasurementsTests
             .QueryAsync<Measurement>(Arg.Any<string>())
             .Returns(new MockAsyncPageable<Measurement>(measurements));
 
-        var request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
-
         // Act
-        var result = await _getMeasurements.Run(request, "1", "2000-01-01");
+        var result = await _getMeasurements.Run(_request, "1", "2000-01-01");
 
         // Assert
         _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
