@@ -1,9 +1,9 @@
 ﻿using ParticleMonitor.Entities;
-using ParticleMonitor.Functions;
+using ParticleMonitor.Functions.PostMeasurements;
 
-namespace ParticleMonitorTests.Functions;
+namespace ParticleMonitorTests.Functions.PostMeasurments;
 
-public class MeasurementsResponseTests
+public class PostMeasurementsResponseTests
 {
     [Fact]
     public void CreateFromMeasurement_CorrectlyConvertsToMeasurementsResponse()
@@ -23,7 +23,7 @@ public class MeasurementsResponseTests
         };
 
         // Act
-        var response = MeasurementsResponse.CreateFromMeasurement(measurement);
+        var response = PostMeasurementsResponse.CreateFromMeasurement(measurement);
 
         // Assert
         Assert.Equal(dateTimeOffset, response.DateTime);

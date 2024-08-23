@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
-namespace ParticleMonitor.Functions;
+namespace ParticleMonitor.Functions.TestAvailabilty;
 
 public class TestAvailability(ILogger<TestAvailability> logger)
 {

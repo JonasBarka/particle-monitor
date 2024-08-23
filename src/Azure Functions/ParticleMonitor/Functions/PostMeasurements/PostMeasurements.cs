@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Text.Json;
 
-namespace ParticleMonitor.Functions;
+namespace ParticleMonitor.Functions.PostMeasurements;
 
 public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider, JsonSerializerOptions JsonSerializerOptions, ILogger<PostMeasurements> logger)
 {
@@ -18,19 +18,19 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
     [Function(nameof(PostMeasurements))]
     [OpenApiOperation(operationId: "PostMeasurements", tags: ["Measurements"], Summary = "Stores a measurement.",
         Description = "Stores a measurement recently collected by a Particle Monitor device.")]
-    [OpenApiRequestBody("application/json", typeof(MeasurementsRequest),
+    [OpenApiRequestBody("application/json", typeof(PostMeasurementsRequest),
         Description = "JSON request body containing the id for the device, followed by detected PM (Particulate Matter) values for PM1.0, PM2.5 and PM10.0.", Required = true)]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(MeasurementsResponse),
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(PostMeasurementsResponse),
         Description = "OK response message containing a JSON result with the supplied request and corresponding date and time in UTC.")]
     [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, "application/json", bodyType: typeof(string),
         Description = "Bad request response message with a description of the problem with the request body.")]
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequest req)
     {
-        MeasurementsRequest? measurementRequest;
+        PostMeasurementsRequest? postMeasurementRequest;
         try
         {
-            measurementRequest = await JsonSerializer.DeserializeAsync<MeasurementsRequest>(req.Body, JsonSerializerOptions);
+            postMeasurementRequest = await JsonSerializer.DeserializeAsync<PostMeasurementsRequest>(req.Body, JsonSerializerOptions);
         }
         catch (JsonException ex)
         {
@@ -39,19 +39,19 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
         }
 
         // Testing has not been able to produce this result regardless of input.
-        if (measurementRequest == null)
+        if (postMeasurementRequest == null)
         {
-            logger.LogWarning("Unexpected null result when deserialising body for {Method} request to {Route} endpoint.", _method, _route);
+            logger.LogWarning("Unexpected null result when deserializing body for {Method} request to {Route} endpoint.", _method, _route);
             return new BadRequestObjectResult("Invalid request body.");
         }
 
-        logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, measurementRequest);
+        logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, postMeasurementRequest);
 
-        var measurement = measurementRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
+        var measurement = postMeasurementRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
 
         try
         {
-            await tableClient.AddEntityAsync(measurement);   
+            await tableClient.AddEntityAsync(measurement);
         }
         catch (RequestFailedException ex)
         {
@@ -62,9 +62,9 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
             };
         }
 
-        var measurementResponse = MeasurementsResponse.CreateFromMeasurement(measurement);
+        var postMeasurementResponse = PostMeasurementsResponse.CreateFromMeasurement(measurement);
 
-        return new OkObjectResult(measurementResponse);
+        return new OkObjectResult(postMeasurementResponse);
     }
 
     private DateTimeOffset DateWithoutMilliseconds()

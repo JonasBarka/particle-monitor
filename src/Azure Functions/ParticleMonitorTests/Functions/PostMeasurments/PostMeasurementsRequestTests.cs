@@ -1,14 +1,14 @@
-﻿using ParticleMonitor.Functions;
+﻿using ParticleMonitor.Functions.PostMeasurements;
 
-namespace ParticleMonitorTests.Functions;
+namespace ParticleMonitorTests.Functions.PostMeasurments;
 
-public class MeasurementsRequestTests
+public class PostMeasurementsRequestTests
 {
     [Fact]
     public void ToMeasurement_CorrectlyConvertsToMeasurement()
     {
         // Arrange
-        var request = new MeasurementsRequest(1, 10, 25, 100);
+        var request = new PostMeasurementsRequest(1, 10, 25, 100);
         var dateTime = new DateTimeOffset(2001, 1, 1, 1, 1, 1, 0, TimeSpan.Zero);
         var guid = Guid.Parse("cc3f632b-d3f5-41c5-810a-b4a71672fc2f");
 

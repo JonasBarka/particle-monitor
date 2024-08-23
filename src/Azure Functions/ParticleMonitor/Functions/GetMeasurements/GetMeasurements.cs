@@ -10,7 +10,7 @@ using Microsoft.OpenApi.Models;
 using ParticleMonitor.Entities;
 using System.Net;
 
-namespace ParticleMonitor.Functions;
+namespace ParticleMonitor.Functions.GetMeasurements;
 
 public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> logger)
 {
@@ -24,7 +24,7 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
         Description = "Device ID for the monitor, for which to retrive measurements.")]
     [OpenApiParameter(name: "dateUTC", In = ParameterLocation.Query, Required = true, Type = typeof(string),
         Description = "UTC date in format yyyy-MM-dd, for which to retrive measurements.")]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<MeasurementsResponse>),
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<GetMeasurementsResponse>),
         Description = "OK response message containing a JSON result with a collection of measurements for the specified device and date.")]
     [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, "application/json", bodyType: typeof(string),
         Description = "Bad request response message with a descriptions of the problem with the request.")]
@@ -62,14 +62,14 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
 
         var partitionKey = deviceId + "_" + dateUTC;
 
-        var measurementsResponses = new List<MeasurementsResponse>();
+        var getMeasurementsResponses = new List<GetMeasurementsResponse>();
         try
         {
             var queryResult = tableClient.QueryAsync<Measurement>(filter: $"PartitionKey eq '{partitionKey}'");
-           
+
             await foreach (var entity in queryResult)
             {
-                measurementsResponses.Add(MeasurementsResponse.CreateFromMeasurement(entity));
+                getMeasurementsResponses.Add(GetMeasurementsResponse.CreateFromMeasurement(entity));
             }
         }
         catch (RequestFailedException ex)
@@ -81,6 +81,6 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
             };
         }
         logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
-        return new OkObjectResult(measurementsResponses);
+        return new OkObjectResult(getMeasurementsResponses);
     }
 }

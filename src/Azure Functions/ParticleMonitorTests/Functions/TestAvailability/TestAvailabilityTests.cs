@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using ParticleMonitor.Functions;
+using PM = ParticleMonitor.Functions.TestAvailabilty;
 
-namespace ParticleMonitorTests.Functions;
+namespace ParticleMonitorTests.Functions.TestAvailability;
 
 public class TestAvailabilityTests
 {
@@ -11,8 +11,8 @@ public class TestAvailabilityTests
     public void Run_ReturnsOkObjectResult_WithExpectedMessage()
     {
         // Arrange
-        var logger = Substitute.For<ILogger<TestAvailability>>();
-        var testAvailability = new TestAvailability(logger);
+        var logger = Substitute.For<ILogger<PM.TestAvailability>>();
+        var testAvailability = new PM.TestAvailability(logger);
         var request = Substitute.For<HttpRequest>();
 
         // Act

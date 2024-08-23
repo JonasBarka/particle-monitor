@@ -1,8 +1,8 @@
 ﻿using ParticleMonitor.Entities;
 
-namespace ParticleMonitor.Functions;
+namespace ParticleMonitor.Functions.PostMeasurements;
 
-public record MeasurementsRequest(int DeviceId, int Pm10, int Pm25, int Pm100)
+public record PostMeasurementsRequest(int DeviceId, int Pm10, int Pm25, int Pm100)
 {
     public Measurement ToMeasurement(DateTimeOffset dateTime, Guid rowKey)
     {

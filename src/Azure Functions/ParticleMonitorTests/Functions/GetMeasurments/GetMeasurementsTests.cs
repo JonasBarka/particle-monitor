@@ -5,9 +5,9 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using ParticleMonitor.Entities;
-using ParticleMonitor.Functions;
+using ParticleMonitor.Functions.GetMeasurements;
 
-namespace ParticleMonitorTests.Functions;
+namespace ParticleMonitorTests.Functions.GetMeasurments;
 
 public class GetMeasurementsTests
 {
@@ -138,7 +138,7 @@ public class GetMeasurementsTests
         _logger.AssertRecieved(2);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<List<MeasurementsResponse>>(okResult.Value);
+        var response = Assert.IsType<List<GetMeasurementsResponse>>(okResult.Value);
         Assert.Equal(2, response.Count);
         Assert.Equal(new(1, DateTime1, 2, 3, 4), response[0]);
         Assert.Equal(new(1, DateTime2, 6, 7, 8), response[1]);

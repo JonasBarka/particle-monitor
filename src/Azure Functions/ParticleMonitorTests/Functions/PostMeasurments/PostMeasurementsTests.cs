@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using ParticleMonitor.Entities;
-using ParticleMonitor.Functions;
+using ParticleMonitor.Functions.PostMeasurements;
 using System.Text;
 using System.Text.Json;
 
-namespace ParticleMonitorTests.Functions;
+namespace ParticleMonitorTests.Functions.PostMeasurments;
 
 public class PostMeasurementsTests
 {
@@ -25,7 +25,7 @@ public class PostMeasurementsTests
         _timeProvider = new FakeTimeProvider();
         _logger = Substitute.For<ILogger<PostMeasurements>>();
         _postMeasurements = new PostMeasurements(_tableClient, _timeProvider,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true },_logger);
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, _logger);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class PostMeasurementsTests
         _logger.AssertRecieved(1);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<MeasurementsResponse>(okResult.Value);
+        var response = Assert.IsType<PostMeasurementsResponse>(okResult.Value);
         Assert.Equal(1, response.DeviceId);
         Assert.Equal(2, response.Pm10);
         Assert.Equal(3, response.Pm25);
