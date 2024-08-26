@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.Core;
 using Azure.Data.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

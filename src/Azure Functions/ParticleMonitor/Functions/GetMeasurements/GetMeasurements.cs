@@ -31,36 +31,33 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequestData req,
         string deviceId,
-        string dateUTC
+        string dateUtc
         )
     {
-        logger.LogInformation("Received {Method} request to {Route} endpoint with query parameters deviceId: {deviceId} and dateUTC: {dateUTC}.", _method, _route, deviceId, dateUTC);
+        logger.LogInformation("Received {Method} request to {Route} endpoint with query parameters deviceId: {deviceId} and dateUTC: {dateUTC}.", _method, _route, deviceId, dateUtc);
 
-        if (string.IsNullOrEmpty(deviceId))
+
+        if (DeviceIdIsNullOrEmpty(deviceId, out ObjectResult? deviceIdIsMissing))
         {
-            logger.LogInformation("No deviceId in request.");
-            return new BadRequestObjectResult("DeviceId query parameter is required.");
+            return deviceIdIsMissing!;
         }
 
-        if (int.TryParse(deviceId, out _) == false)
+        if (DeviceIdIsInvalid(deviceId, out ObjectResult? deviceIdIsInvalid))
         {
-            logger.LogInformation("Invalid query parameter deviceId: {InvalidQueryParameter} in request. Must be parsable as integer.", deviceId);
-            return new BadRequestObjectResult("DeviceId query parameter must be an integer.");
+            return deviceIdIsInvalid!;
         }
 
-        if (string.IsNullOrEmpty(dateUTC))
+        if (DateUtcIsNullOrEmpty(dateUtc, out ObjectResult? dateUtcIsMissing))
         {
-            logger.LogInformation("No query parameter dateUTC in request.");
-            return new BadRequestObjectResult("DateUTC query parameter is required.");
+            return dateUtcIsMissing!;
         }
 
-        if (DateOnly.TryParseExact(dateUTC, Constants.DateFormat, out _) != true)
+        if(DateUtcIsInvalid(dateUtc, out ObjectResult? dateUtcIsInvalid))
         {
-            logger.LogInformation("Invalid dateUTC query parameter: {InvalidQueryParameter} in request. Must be parsable as a {DateFormat} DateOnly.", dateUTC, Constants.DateFormat);
-            return new BadRequestObjectResult($"DateUTC query parameter must be a date in the format {Constants.DateFormat}.");
+            return dateUtcIsInvalid!;
         }
 
-        var partitionKey = deviceId + "_" + dateUTC;
+        var partitionKey = deviceId + "_" + dateUtc;
 
         var getMeasurementsResponses = new List<GetMeasurementsResponse>();
         try
@@ -82,5 +79,57 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
         }
         logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
         return new OkObjectResult(getMeasurementsResponses);
+    }
+
+    private bool DeviceIdIsNullOrEmpty(string deviceId, out ObjectResult? objectResult)
+    {
+        if (string.IsNullOrEmpty(deviceId))
+        {
+            logger.LogInformation("No deviceId in request.");
+            objectResult = new BadRequestObjectResult("DeviceId query parameter is required.");
+            return true;
+        }
+
+        objectResult = null;
+        return false;
+    }
+
+    private bool DeviceIdIsInvalid(string deviceId, out ObjectResult? objectResult)
+    {
+        if (int.TryParse(deviceId, out _) == false)
+        {
+            logger.LogInformation("Invalid deviceId query parameter: {InvalidQueryParameter} in request. Must be parsable as integer.", deviceId);
+            objectResult = new BadRequestObjectResult("DeviceId query parameter must be an integer.");
+            return true;
+        }
+
+        objectResult = null;
+        return false;
+    }
+
+    private bool DateUtcIsNullOrEmpty(string dateUtc, out ObjectResult? objectResult)
+    {
+        if (string.IsNullOrEmpty(dateUtc))
+        {
+            logger.LogInformation("No query parameter dateUTC in request.");
+            objectResult = new BadRequestObjectResult("DateUTC query parameter is required.");
+            return true;
+        }
+
+        objectResult = null;
+        return false;
+    }
+
+    private bool DateUtcIsInvalid(string dateUtc, out ObjectResult? objectResult)
+    {
+        if (DateOnly.TryParseExact(dateUtc, Constants.DateFormat, out _) != true)
+        {
+            logger.LogInformation("Invalid dateUTC query parameter: {InvalidQueryParameter} in request. Must be parsable as a {DateFormat} DateOnly.", dateUtc, Constants.DateFormat);
+            objectResult = new BadRequestObjectResult($"DateUTC query parameter must be a date in the format {Constants.DateFormat}.");
+            return true;
+        }
+
+        objectResult = null;
+        return false;
     }
 }

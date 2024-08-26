@@ -27,27 +27,20 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequest req)
     {
-        PostMeasurementsRequest? postMeasurementRequest;
-        try
+        if(Deserialize(req.Body, out PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody) == false)
         {
-            postMeasurementRequest = await JsonSerializer.DeserializeAsync<PostMeasurementsRequest>(req.Body, JsonSerializerOptions);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Received {Method} request to {Route} endpoint with an invalid body.", _method, _route);
-            return new BadRequestObjectResult("Invalid request body.");
+            return invalidRequestBody!;
         }
 
-        // Testing has not been able to produce this result regardless of input.
-        if (postMeasurementRequest == null)
+        if(PostMeasurementRequestIsNull(postMeasurementRequest, out ObjectResult? nullRequestBody))
         {
-            logger.LogWarning("Unexpected null result when deserializing body for {Method} request to {Route} endpoint.", _method, _route);
-            return new BadRequestObjectResult("Invalid request body.");
+            // Testing has not been able to produce this result regardless of input.
+            return nullRequestBody!;
         }
 
         logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, postMeasurementRequest);
 
-        var measurement = postMeasurementRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
+        var measurement = postMeasurementRequest!.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
 
         try
         {
@@ -72,5 +65,35 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
         DateTimeOffset dateTime = timeProvider.GetUtcNow();
 
         return new DateTimeOffset(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second, dateTime.Offset);
+    }
+
+    private bool Deserialize(Stream json, out PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody)
+    {
+        try
+        {
+            postMeasurementRequest = JsonSerializer.Deserialize<PostMeasurementsRequest>(json, JsonSerializerOptions);
+            invalidRequestBody = null;
+            return true;
+        }
+        catch (JsonException)
+        {
+            postMeasurementRequest = null;
+            invalidRequestBody = new BadRequestObjectResult("Invalid request body.");
+            logger.LogWarning("Received {Method} request to {Route} endpoint with an invalid body.", _method, _route);
+            return false;
+        }
+    }
+
+    private bool PostMeasurementRequestIsNull(PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody)
+    {
+        if (postMeasurementRequest == null)
+        {
+            logger.LogWarning("Unexpected null result when deserializing body for {Method} request to {Route} endpoint.", _method, _route);
+            invalidRequestBody = new BadRequestObjectResult("Invalid request body.");
+            return true;
+        }
+
+        invalidRequestBody = null;
+        return false;
     }
 }
