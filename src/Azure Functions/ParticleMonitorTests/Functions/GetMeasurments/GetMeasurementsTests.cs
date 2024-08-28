@@ -1,26 +1,23 @@
-﻿using Azure;
-using Azure.Data.Tables;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using ParticleMonitor.Entities;
 using ParticleMonitor.Functions.GetMeasurements;
 
 namespace ParticleMonitorTests.Functions.GetMeasurments;
 
 public class GetMeasurementsTests
 {
-    private readonly TableClient _tableClient;
+    private readonly IGetMeasurementsHandler _handler;
     private readonly ILogger<GetMeasurements> _logger;
     private readonly GetMeasurements _getMeasurements;
     private readonly HttpRequestData _request;
 
     public GetMeasurementsTests()
     {
-        _tableClient = Substitute.For<TableClient>();
+        _handler = Substitute.For<IGetMeasurementsHandler>();
         _logger = Substitute.For<ILogger<GetMeasurements>>();
-        _getMeasurements = new GetMeasurements(_tableClient, _logger);
+        _getMeasurements = new GetMeasurements(_handler, _logger);
         _request = Substitute.For<HttpRequestData>(Substitute.For<FunctionContext>());
     }
 
@@ -33,7 +30,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "", "2000-01-01");
 
         // Assert
-        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -50,7 +47,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "one", "2000-01-01");
 
         // Assert
-        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -67,7 +64,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "1", "");
 
         // Assert
-        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -84,7 +81,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "1", "00-01-01");
 
         // Assert
-        _tableClient.DidNotReceiveWithAnyArgs().QueryAsync<Measurement>();
+        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -93,23 +90,18 @@ public class GetMeasurementsTests
     }
 
     [Fact]
-    public async Task Run_ReturnsServerError_WhenQueryAsyncThrows()
+    public async Task Run_Throws_WhenQueryAsyncThrows()
     {
         // Arrange
-        _tableClient.QueryAsync<Measurement>(Arg.Any<string>()).Throws(new RequestFailedException("Error"));
+        _handler.HandleAsync(Arg.Any<string>(), Arg.Any<string>()).ThrowsAsync(new Exception());
 
         // Act
-        var result = await _getMeasurements.Run(_request, "1", "2000-01-01");
+        await Assert.ThrowsAnyAsync<Exception>(() => _getMeasurements.Run(_request, "1", "2000-01-01"));
 
         // Assert
-        _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
+        await _handler.Received(1).HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(1, LogLevel.Information);
-        _logger.AssertRecieved(1, LogLevel.Error);
-        _logger.AssertRecieved(2);
-
-        var serverErrorResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(500, serverErrorResult.StatusCode);
-        Assert.Equal("An error occurred while trying to store retrive the measurements.", serverErrorResult.Value);
+        _logger.AssertRecieved(1);
     }
 
     [Fact]
@@ -119,21 +111,21 @@ public class GetMeasurementsTests
 
         var DateTime1 = new DateTimeOffset(2001, 1, 1, 1, 1, 1, TimeSpan.Zero);
         var DateTime2 = new DateTimeOffset(2001, 1, 1, 2, 2, 2, TimeSpan.Zero);
-        var measurements = new List<Measurement>
+        var measurements = new List<GetMeasurementsResponse>
         {
-            new() { PartitionKey = "1_2001-01-01", RowKey = "2c58023b-e8ce-4dd9-b61f-cefa6fbec95d", DeviceId = 1, DateTime = DateTime1, Pm10 = 2, Pm25 = 3, Pm100 = 4 },
-            new() { PartitionKey = "1_2001-01-01", RowKey = "85d5568a-580f-40a3-af29-577a2105812b", DeviceId = 1, DateTime = DateTime2, Pm10 = 6, Pm25 = 7, Pm100 = 8 }
+            new(1, DateTime1, 2, 3, 4),
+            new(1, DateTime2, 6, 7, 8),
         };
 
-        _tableClient
-            .QueryAsync<Measurement>(Arg.Any<string>())
-            .Returns(new MockAsyncPageable<Measurement>(measurements));
+        _handler
+            .HandleAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(measurements);
 
         // Act
         var result = await _getMeasurements.Run(_request, "1", "2000-01-01");
 
         // Assert
-        _tableClient.ReceivedWithAnyArgs(1).QueryAsync<Measurement>();
+        await _handler.Received(1).HandleAsync(Arg.Any<string>(), Arg.Any<string>());
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -146,19 +138,19 @@ public class GetMeasurementsTests
 }
 
 // Manual mock needed to fulfill notnull constraint on T, which otherwise causes a warning.
-public class MockAsyncPageable<T>(IEnumerable<T> items) : AsyncPageable<T> where T : notnull
-{
-    public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-    {
-        var page = Page<T>.FromValues(items.ToList(), null, Substitute.For<Response>());
-        yield return await Task.FromResult(page);
-    }
+//public class MockAsyncPageable<T>(IEnumerable<T> items) : AsyncPageable<T> where T : notnull
+//{
+//    public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
+//    {
+//        var page = Page<T>.FromValues(items.ToList(), null, Substitute.For<Response>());
+//        yield return await Task.FromResult(page);
+//    }
 
-    public override async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        foreach (var item in items)
-        {
-            yield return await Task.FromResult(item);
-        }
-    }
-}
+//    public override async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+//    {
+//        foreach (var item in items)
+//        {
+//            yield return await Task.FromResult(item);
+//        }
+//    }
+//}

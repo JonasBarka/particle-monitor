@@ -27,20 +27,16 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, _method, Route = _route)] HttpRequest req)
     {
-        if(Deserialize(req.Body, out PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody) == false)
+        var deserializeResult = await DeserializeAsync(req.Body);
+
+        if (deserializeResult.PostMeasurementsRequest == null)
         {
-            return invalidRequestBody!;
+            return new BadRequestObjectResult(deserializeResult.ErrorMessage);
         }
 
-        if(PostMeasurementRequestIsNull(postMeasurementRequest, out ObjectResult? nullRequestBody))
-        {
-            // Testing has not been able to produce this result regardless of input.
-            return nullRequestBody!;
-        }
+        logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, deserializeResult.PostMeasurementsRequest);
 
-        logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, postMeasurementRequest);
-
-        var measurement = postMeasurementRequest!.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
+        var measurement = deserializeResult.PostMeasurementsRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
 
         try
         {
@@ -67,20 +63,16 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
         return new DateTimeOffset(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second, dateTime.Offset);
     }
 
-    private bool Deserialize(Stream json, out PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody)
+    private async Task<(PostMeasurementsRequest? PostMeasurementsRequest, string ErrorMessage)> DeserializeAsync(Stream json)
     {
         try
         {
-            postMeasurementRequest = JsonSerializer.Deserialize<PostMeasurementsRequest>(json, JsonSerializerOptions);
-            invalidRequestBody = null;
-            return true;
+            return (await JsonSerializer.DeserializeAsync<PostMeasurementsRequest>(json, JsonSerializerOptions), "");
         }
         catch (JsonException)
         {
-            postMeasurementRequest = null;
-            invalidRequestBody = new BadRequestObjectResult("Invalid request body.");
             logger.LogWarning("Received {Method} request to {Route} endpoint with an invalid body.", _method, _route);
-            return false;
+            return (null, "Invalid request body.");
         }
     }
 

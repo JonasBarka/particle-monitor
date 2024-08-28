@@ -2,6 +2,7 @@ using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ParticleMonitor.Functions.GetMeasurements;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
@@ -31,6 +32,7 @@ internal class Program
                 {
                     PropertyNameCaseInsensitive = true
                 });
+                services.AddSingleton<IGetMeasurementsHandler, GetMeasurementsHandler>();
             })
             .Build();
 

@@ -1,18 +1,14 @@
-using Azure;
-using Azure.Data.Tables;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using ParticleMonitor.Entities;
 using System.Net;
 
 namespace ParticleMonitor.Functions.GetMeasurements;
 
-public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> logger)
+public class GetMeasurements(IGetMeasurementsHandler handler, ILogger<GetMeasurements> logger)
 {
     const string _method = "get";
     const string _route = "measurements";
@@ -57,27 +53,9 @@ public class GetMeasurements(TableClient tableClient, ILogger<GetMeasurements> l
             return dateUtcIsInvalid!;
         }
 
-        var partitionKey = deviceId + "_" + dateUtc;
+        var getMeasurementsResponses = await handler.HandleAsync(deviceId, dateUtc);
 
-        var getMeasurementsResponses = new List<GetMeasurementsResponse>();
-        try
-        {
-            var queryResult = tableClient.QueryAsync<Measurement>(filter: $"PartitionKey eq '{partitionKey}'");
-
-            await foreach (var entity in queryResult)
-            {
-                getMeasurementsResponses.Add(GetMeasurementsResponse.CreateFromMeasurement(entity));
-            }
-        }
-        catch (RequestFailedException ex)
-        {
-            logger.LogError(ex, "Measurements for partition key {partitionKey} could not be retrieved.", partitionKey);
-            return new ObjectResult("An error occurred while trying to store retrive the measurements.")
-            {
-                StatusCode = StatusCodes.Status500InternalServerError
-            };
-        }
-        logger.LogInformation("Returning result for partition key {PartitionKey}.", partitionKey);
+        logger.LogInformation("Returned getMeasurementsResponses for deviceId: {deviceId} and dateUTC: {dateUTC}.", _method, _route, deviceId, dateUtc);
         return new OkObjectResult(getMeasurementsResponses);
     }
 
