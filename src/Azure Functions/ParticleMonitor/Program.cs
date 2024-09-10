@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ParticleMonitor.Functions.GetMeasurements;
+using ParticleMonitor.Functions.PostMeasurements;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
@@ -33,10 +34,10 @@ internal class Program
                     PropertyNameCaseInsensitive = true
                 });
                 services.AddSingleton<IGetMeasurementsHandler, GetMeasurementsHandler>();
+                services.AddSingleton<IPostMeasurementsHandler, PostMeasurementsHandler>();
             })
             .Build();
 
         await host.RunAsync();
     }
 }
-

@@ -10,7 +10,7 @@ using System.Text.Json;
 
 namespace ParticleMonitor.Functions.PostMeasurements;
 
-public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider, JsonSerializerOptions JsonSerializerOptions, ILogger<PostMeasurements> logger)
+public class PostMeasurements(IPostMeasurementsHandler postMeasurementsHandler, JsonSerializerOptions JsonSerializerOptions, ILogger<PostMeasurements> logger)
 {
     const string _method = "post";
     const string _route = "measurements";
@@ -36,31 +36,9 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
 
         logger.LogInformation("Received {Method} request to {Route} endpoint, with body {Body}.", _method, _route, deserializeResult.PostMeasurementsRequest);
 
-        var measurement = deserializeResult.PostMeasurementsRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
-
-        try
-        {
-            await tableClient.AddEntityAsync(measurement);
-        }
-        catch (RequestFailedException ex)
-        {
-            logger.LogError(ex, "Measurement {Measurement} could not be stored.", measurement);
-            return new ObjectResult("An error occurred while trying to store the measurement.")
-            {
-                StatusCode = StatusCodes.Status500InternalServerError
-            };
-        }
-
-        var postMeasurementResponse = PostMeasurementsResponse.CreateFromMeasurement(measurement);
+        var postMeasurementResponse = await postMeasurementsHandler.HandleAsync(deserializeResult.PostMeasurementsRequest);
 
         return new OkObjectResult(postMeasurementResponse);
-    }
-
-    private DateTimeOffset DateWithoutMilliseconds()
-    {
-        DateTimeOffset dateTime = timeProvider.GetUtcNow();
-
-        return new DateTimeOffset(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second, dateTime.Offset);
     }
 
     private async Task<(PostMeasurementsRequest? PostMeasurementsRequest, string ErrorMessage)> DeserializeAsync(Stream json)
@@ -74,18 +52,5 @@ public class PostMeasurements(TableClient tableClient, TimeProvider timeProvider
             logger.LogWarning("Received {Method} request to {Route} endpoint with an invalid body.", _method, _route);
             return (null, "Invalid request body.");
         }
-    }
-
-    private bool PostMeasurementRequestIsNull(PostMeasurementsRequest? postMeasurementRequest, out ObjectResult? invalidRequestBody)
-    {
-        if (postMeasurementRequest == null)
-        {
-            logger.LogWarning("Unexpected null result when deserializing body for {Method} request to {Route} endpoint.", _method, _route);
-            invalidRequestBody = new BadRequestObjectResult("Invalid request body.");
-            return true;
-        }
-
-        invalidRequestBody = null;
-        return false;
     }
 }
