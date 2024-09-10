@@ -27,7 +27,7 @@ public class GetMeasurementsHandlerTests
         {
             new()
             {
-                PartitionKey = "1_2023-10-01",
+                PartitionKey = "1_2001-01-01",
                 RowKey = Guid.NewGuid().ToString(),
                 DeviceId = 1,
                 DateTime = DateTimeOffset.UtcNow,
@@ -37,7 +37,7 @@ public class GetMeasurementsHandlerTests
             },
             new()
             {
-                PartitionKey = "1_2023-10-01",
+                PartitionKey = "1_2001-01-01",
                 RowKey = Guid.NewGuid().ToString(),
                 DeviceId = 1,
                 DateTime = DateTimeOffset.UtcNow,
@@ -48,11 +48,11 @@ public class GetMeasurementsHandlerTests
         };
 
         _tableClient
-            .QueryAsync<Measurement>(Arg.Any<string>())
+            .QueryAsync<Measurement>(Arg.Is<string>(x => x == "PartitionKey eq '1_2001-01-01'"))
             .Returns(new MockAsyncPageable<Measurement>(measurements));
 
         // Act
-        var result = await _handler.HandleAsync("1", "2023-10-01");
+        var result = await _handler.HandleAsync("1", "2001-01-01");
 
         // Assert
         Assert.Equal(2, result.Count);
@@ -74,14 +74,12 @@ public class GetMeasurementsHandlerTests
     public async Task HandleAsync_ReturnsEmpty_WhenDataDonNotExist()
     {
         // Arrange
-        var measurements = new List<Measurement>();
-
         _tableClient
             .QueryAsync<Measurement>(Arg.Any<string>())
-            .Returns(new MockAsyncPageable<Measurement>(measurements));
+            .Returns(new MockAsyncPageable<Measurement>([]));
 
         // Act
-        var result = await _handler.HandleAsync("1", "2023-10-01");
+        var result = await _handler.HandleAsync("1", "2001-01-01");
 
         // Assert
         Assert.Empty(result);
@@ -91,22 +89,18 @@ public class GetMeasurementsHandlerTests
     public async Task HandleAsync_Throws_WhenQueryAsyncThrows()
     {
         // Arrange
-        var deviceId = "device123";
-        var dateUtc = "2023-10-01";
-        var partitionKey = $"{deviceId}_{dateUtc}";
-
         _tableClient
-            .QueryAsync<Measurement>(Arg.Any<string>())
+            .QueryAsync<Measurement>(Arg.Is<string>(x => x == "PartitionKey eq '1_2001-01-01'"))
             .Throws(new Exception("Test exception"));
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<Exception>(() => _handler.HandleAsync(deviceId, dateUtc));
+        var exception = await Assert.ThrowsAsync<Exception>(() => _handler.HandleAsync("1", "2001-01-01"));
         Assert.Equal("Test exception", exception.Message);
         _logger.AssertRecieved(1, LogLevel.Error);
         _logger.AssertRecieved(1);
     }
 
-    // Manual mock needed to fulfill notnull constraint on T, which otherwise causes a warning.
+    // Manual mock added to fulfill notnull constraint on T, which otherwise causes a warning.
     public class MockAsyncPageable<T>(IEnumerable<T> items) : AsyncPageable<T> where T : notnull
     {
         public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)

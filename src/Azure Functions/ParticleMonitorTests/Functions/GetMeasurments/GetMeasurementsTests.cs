@@ -30,7 +30,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "", "2000-01-01");
 
         // Assert
-        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!);
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -47,7 +47,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "one", "2000-01-01");
 
         // Assert
-        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!);
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -64,7 +64,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "1", "");
 
         // Assert
-        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!);
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -81,7 +81,7 @@ public class GetMeasurementsTests
         var result = await _getMeasurements.Run(_request, "1", "00-01-01");
 
         // Assert
-        await _handler.DidNotReceive().HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!);
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
@@ -93,64 +93,49 @@ public class GetMeasurementsTests
     public async Task Run_Throws_WhenQueryAsyncThrows()
     {
         // Arrange
-        _handler.HandleAsync(Arg.Any<string>(), Arg.Any<string>()).ThrowsAsync(new Exception());
+        _handler.HandleAsync("1", "2000-01-01").ThrowsAsync(new Exception());
 
         // Act
         await Assert.ThrowsAnyAsync<Exception>(() => _getMeasurements.Run(_request, "1", "2000-01-01"));
 
         // Assert
-        await _handler.Received(1).HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.ReceivedWithAnyArgs(1).HandleAsync(default!, default!);
         _logger.AssertRecieved(1, LogLevel.Information);
         _logger.AssertRecieved(1);
     }
 
     [Fact]
-    public async Task Run_ReturnsExpectedMeasurements_WhenPartitionKeyIsValid()
+    public async Task Run_ReturnsExpectedMeasurements_IdAndDateAreValid()
     {
         // Arrange
 
-        var DateTime1 = new DateTimeOffset(2001, 1, 1, 1, 1, 1, TimeSpan.Zero);
-        var DateTime2 = new DateTimeOffset(2001, 1, 1, 2, 2, 2, TimeSpan.Zero);
+        var dateTime1 = new DateTimeOffset(2001, 1, 1, 1, 1, 1, TimeSpan.Zero);
+        var dateTime2 = new DateTimeOffset(2001, 1, 1, 2, 2, 2, TimeSpan.Zero);
+        var measurement1 = new GetMeasurementsResponse(1, dateTime1, 2, 3, 4);
+        var measurement2 = new GetMeasurementsResponse(1, dateTime2, 6, 7, 8);
+
         var measurements = new List<GetMeasurementsResponse>
         {
-            new(1, DateTime1, 2, 3, 4),
-            new(1, DateTime2, 6, 7, 8),
+            measurement1,
+            measurement2,
         };
 
         _handler
-            .HandleAsync(Arg.Any<string>(), Arg.Any<string>())
+            .HandleAsync("1", "2000-01-01")
             .Returns(measurements);
 
         // Act
         var result = await _getMeasurements.Run(_request, "1", "2000-01-01");
 
         // Assert
-        await _handler.Received(1).HandleAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _handler.ReceivedWithAnyArgs(1).HandleAsync(default!, default!);
         _logger.AssertRecieved(2, LogLevel.Information);
         _logger.AssertRecieved(2);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<List<GetMeasurementsResponse>>(okResult.Value);
         Assert.Equal(2, response.Count);
-        Assert.Equal(new(1, DateTime1, 2, 3, 4), response[0]);
-        Assert.Equal(new(1, DateTime2, 6, 7, 8), response[1]);
+        Assert.Equal(measurement1, response[0]);
+        Assert.Equal(measurement2, response[1]);
     }
 }
-
-// Manual mock needed to fulfill notnull constraint on T, which otherwise causes a warning.
-//public class MockAsyncPageable<T>(IEnumerable<T> items) : AsyncPageable<T> where T : notnull
-//{
-//    public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-//    {
-//        var page = Page<T>.FromValues(items.ToList(), null, Substitute.For<Response>());
-//        yield return await Task.FromResult(page);
-//    }
-
-//    public override async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-//    {
-//        foreach (var item in items)
-//        {
-//            yield return await Task.FromResult(item);
-//        }
-//    }
-//}
