@@ -20,21 +20,24 @@ internal class Program
             {
                 services.AddApplicationInsightsTelemetryWorkerService();
                 services.ConfigureFunctionsApplicationInsights();
-                services.AddSingleton(sp =>
+                
+                services.AddSingleton<IGetMeasurementsHandler, GetMeasurementsHandler>();
+                services.AddSingleton<IPostMeasurementsHandler, PostMeasurementsHandler>();
+                services.AddSingleton(TimeProvider.System);
+
+                services.AddSingleton(_ =>
                 {
                     string? connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
                     string tableName = "ParticleMonitor";
                     return new TableClient(connectionString, tableName);
-                });
-                services.AddSingleton(TimeProvider.System);
+                }); 
 
                 // Other ways to globally set serialization options have failed.
                 services.AddSingleton(new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
-                services.AddSingleton<IGetMeasurementsHandler, GetMeasurementsHandler>();
-                services.AddSingleton<IPostMeasurementsHandler, PostMeasurementsHandler>();
+                
             })
             .Build();
 
