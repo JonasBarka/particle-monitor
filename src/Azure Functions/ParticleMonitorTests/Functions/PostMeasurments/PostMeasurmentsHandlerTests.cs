@@ -1,14 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using Azure;
+﻿using Azure;
 using Azure.Data.Tables;
-using Castle.Core.Logging;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
 using ParticleMonitor.Entities;
 using ParticleMonitor.Functions.PostMeasurements;
-using ParticleMonitorTests.Functions;
-using Xunit;
 
 namespace ParticleMonitorTests.Functions.PostMeasurments;
 

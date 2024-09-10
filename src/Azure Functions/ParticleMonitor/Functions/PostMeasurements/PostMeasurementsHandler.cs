@@ -1,15 +1,6 @@
-﻿using Azure.Data.Tables;
-using Azure;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Azure;
+using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
-using ParticleMonitor.Functions.GetMeasurements;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http;
 
 namespace ParticleMonitor.Functions.PostMeasurements;
 

@@ -1,10 +1,6 @@
-﻿using Azure;
-using Azure.Data.Tables;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Time.Testing;
-using ParticleMonitor.Entities;
 using ParticleMonitor.Functions.PostMeasurements;
 using System.Text;
 using System.Text.Json;
