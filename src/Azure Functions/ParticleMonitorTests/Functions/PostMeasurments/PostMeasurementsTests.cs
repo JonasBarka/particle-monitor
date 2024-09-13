@@ -16,10 +16,6 @@ public class PostMeasurementsTests
     public PostMeasurementsTests()
     {
         _postMeasurementsHandler = Substitute.For<IPostMeasurementsHandler>();
-        _postMeasurementsHandler
-            .HandleAsync(Arg.Any<PostMeasurementsRequest>())
-            .Returns(new PostMeasurementsResponse(1, DateTimeOffset.UtcNow, 2, 3, 4));
-
         _logger = Substitute.For<ILogger<PostMeasurements>>();
         _postMeasurements = new PostMeasurements(
             _postMeasurementsHandler,
@@ -51,6 +47,11 @@ public class PostMeasurementsTests
     public async Task Run_ReturnsOk_WhenMeasurementIsSuccessfullyInserted()
     {
         // Arrange
+        var dateTimeOffset = DateTimeOffset.UtcNow;
+        _postMeasurementsHandler
+            .HandleAsync(Arg.Is<PostMeasurementsRequest>(x => x == new PostMeasurementsRequest(1, 2, 3, 4)))
+            .Returns(new PostMeasurementsResponse(1, dateTimeOffset, 2, 3, 4));
+
         var validJson = """
         {
             "deviceId" : 1,
@@ -72,40 +73,6 @@ public class PostMeasurementsTests
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<PostMeasurementsResponse>(okResult.Value);
-        Assert.Equal(1, response.DeviceId);
-        Assert.Equal(2, response.Pm10);
-        Assert.Equal(3, response.Pm25);
-        Assert.Equal(4, response.Pm100);
+        Assert.Equal(new PostMeasurementsResponse(1, dateTimeOffset, 2, 3, 4), response);
     }
-
-    //[Fact]
-    //public async Task Run_ReturnsServerError_WhenAddEntityAsyncThrows()
-    //{
-    //    // Arrange
-    //    var validJson = """
-    //    {
-    //        "deviceId" : 1,
-    //        "pm10" : 2,
-    //        "pm25" : 3,
-    //        "pm100" : 4
-    //    }
-    //    """;
-    //    var request = Substitute.For<HttpRequest>();
-    //    request.Body.Returns(new MemoryStream(Encoding.UTF8.GetBytes(validJson)));
-
-    //    _tableClient.AddEntityAsync(Arg.Any<Measurement>()).ThrowsAsync(new RequestFailedException("Error"));
-
-    //    // Act
-    //    var result = await _postMeasurements.Run(request);
-
-    //    // Assert
-    //    await _tableClient.Received(1).AddEntityAsync(Arg.Any<Measurement>());
-    //    _logger.AssertRecieved(1, LogLevel.Information);
-    //    _logger.AssertRecieved(1, LogLevel.Error);
-    //    _logger.AssertRecieved(2);
-
-    //    var serverErrorResult = Assert.IsType<ObjectResult>(result);
-    //    Assert.Equal(500, serverErrorResult.StatusCode);
-    //    Assert.Equal("An error occurred while trying to store the measurement.", serverErrorResult.Value);
-    //}
 }

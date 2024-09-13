@@ -15,15 +15,26 @@ public class PostMeasurementsHandler(TableClient tableClient, TimeProvider timeP
     {
         var measurement = postMeasurementsRequest.ToMeasurement(DateWithoutMilliseconds(), Guid.NewGuid());
 
+        Response? response;
         try
         {
-            await tableClient.AddEntityAsync(measurement);
+            response = await tableClient.AddEntityAsync(measurement);
         }
         catch (RequestFailedException ex)
         {
-            //logger.LogError("Measurement {Measurement} could not be stored.", measurement);
             logger.LogError(ex, "Measurement {Measurement} could not be stored.", measurement);
             throw;
+        }
+
+        if (response == null)
+        {
+            logger.LogError("Measurement {Measurement} could not be stored. AddEntityAsync returned null.", measurement);
+            throw new RequestFailedException($"Measurement {measurement} could not be stored. AddEntityAsync returned null.");
+        }
+        else if (response.IsError)
+        {
+            logger.LogError("Measurement {Measurement} could not be stored. Status code: {StatusCode}, Reason: {ReasonPhrase}", measurement, response.Status, response.ReasonPhrase);
+            throw new RequestFailedException($"Measurement {measurement} could not be stored. Status code: {response.Status}, Reason: {response.ReasonPhrase}");
         }
 
         return PostMeasurementsResponse.CreateFromMeasurement(measurement);
